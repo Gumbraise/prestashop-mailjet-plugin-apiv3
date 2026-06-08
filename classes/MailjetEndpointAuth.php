@@ -48,4 +48,28 @@ class MailjetEndpointAuth
             die('hack attempt');
         }
     }
+
+    /**
+     * @return void
+     */
+    public static function ensureCronSecret()
+    {
+        if (!Configuration::get('MAILJET_CRON_SECRET')) {
+            Configuration::updateValue('MAILJET_CRON_SECRET', bin2hex(random_bytes(32)));
+        }
+    }
+
+    /**
+     * @return void
+     */
+    public static function validateCronSecret()
+    {
+        self::ensureCronSecret();
+        $submittedToken = (string) Tools::getValue('token');
+        $cronSecret = (string) Configuration::get('MAILJET_CRON_SECRET');
+
+        if ($submittedToken === '' || !hash_equals($cronSecret, $submittedToken)) {
+            die('No hackers allowed here ! ;-)');
+        }
+    }
 }

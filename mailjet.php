@@ -330,6 +330,9 @@ class Mailjet extends Module
         $this->createTriggers();
         Configuration::updateValue('MJ_ALLEMAILS', 1);
 
+        require_once _PS_MODULE_DIR_ . 'mailjet/classes/MailjetEndpointAuth.php';
+        MailjetEndpointAuth::ensureCronSecret();
+
         return (
             parent::install()
             && $this->loadConfiguration()
@@ -2558,7 +2561,9 @@ class Mailjet extends Module
      */
     public function getEndpointUrls()
     {
-        $cronToken = Configuration::get('SEGMENT_CUSTOMER_TOKEN') ?: $this->account->TOKEN;
+        require_once _PS_MODULE_DIR_ . 'mailjet/classes/MailjetEndpointAuth.php';
+        MailjetEndpointAuth::ensureCronSecret();
+        $cronToken = Configuration::get('MAILJET_CRON_SECRET');
         $adminToken = Tools::getAdminTokenLite('AdminModules');
 
         return [

@@ -25,13 +25,8 @@
  * International Registered Trademark & Property of PrestaShop SA
  */
 
-require_once _PS_MODULE_DIR_ . 'mailjet/mailjet.php';
-
-$mailjet = new Mailjet();
-
-if (Tools::getValue('token') !== Configuration::get('SEGMENT_CUSTOMER_TOKEN')) {
-    die('No hackers allowed here ! ;-)');
-}
+require_once _PS_MODULE_DIR_ . 'mailjet/classes/MailjetEndpointAuth.php';
+MailjetEndpointAuth::validateCronSecret();
 
 function utf8Outtags($text)
 {

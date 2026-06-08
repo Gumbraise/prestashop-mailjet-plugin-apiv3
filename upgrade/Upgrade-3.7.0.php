@@ -30,8 +30,11 @@ if (!defined('_PS_VERSION_')) {
 }
 
 require_once _PS_MODULE_DIR_ . 'mailjet/mailjet.php';
+require_once _PS_MODULE_DIR_ . 'mailjet/classes/MailjetEndpointAuth.php';
 
 function upgrade_module_3_7_0($object)
 {
+    MailjetEndpointAuth::ensureCronSecret();
+
     return $object->migrateDeprecatedHooks();
 }

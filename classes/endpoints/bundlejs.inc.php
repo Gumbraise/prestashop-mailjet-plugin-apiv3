@@ -26,11 +26,9 @@
  */
 
 require_once _PS_MODULE_DIR_ . 'mailjet/mailjet.php';
+require_once _PS_MODULE_DIR_ . 'mailjet/classes/MailjetEndpointAuth.php';
+MailjetEndpointAuth::validateAdminModuleToken();
 $return = '';
-
-if (Tools::getValue('token') != Configuration::get('SEGMENT_CUSTOMER_TOKEN') || !Configuration::get('SEGMENT_CUSTOMER_TOKEN')) {
-    exit();
-}
 
 if (Tools::getValue('action') === 'product') {
     if (Tools::getValue('name') != '') {
