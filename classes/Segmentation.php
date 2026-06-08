@@ -925,8 +925,8 @@ class Segmentation
                     $joined_tables[] = 'orders';
                 }
                 foreach ($fieldSelectData as $fieldKey => $case) {
-                    $include = $ruleAction[$fieldKey] == 'IN';
-                    $logicalOperator = ' ' . $ruleA[$fieldKey] . ' ';
+                    $include = $this->isRuleInclude($ruleAction[$fieldKey]);
+                    $logicalOperator = ' ' . $this->getAllowedLogicalOperator($ruleA[$fieldKey]) . ' ';
 
                     switch ($case) {
                         // Number of abandoned carts
@@ -1030,7 +1030,7 @@ class Segmentation
                             if (strpos($additional_select_column, 'o.id_order') === false) {
                                 $additional_select_column .= ', o.id_order';
                             }
-                            $where .= ' AND cl.id_category' . $action . $sourceData[$fieldKey];
+                            $where .= ' AND cl.id_category' . $action . $this->sanitizeSegmentInt($sourceData[$fieldKey]);
                             $having .= ' COUNT(cart.id_cart) >= 1 and o.id_order IS NULL';
                             $havings[] = $having;
                             $having = '';
@@ -1062,7 +1062,7 @@ class Segmentation
                             if (strpos($additional_select_column, 'o.id_order') === false) {
                                 $additional_select_column .= ', o.id_order';
                             }
-                            $where .= $logicalOperator . ' m.id_manufacturer ' . $action . $sourceData[$fieldKey] . $exclude;
+                            $where .= $logicalOperator . ' m.id_manufacturer ' . $action . $this->sanitizeSegmentInt($sourceData[$fieldKey]) . $exclude;
                             $having .= ' COUNT(cart.id_cart) >= 1 AND o.id_order IS NULL ';
                             $havings[] = $having;
                             $having = '';
@@ -1078,8 +1078,8 @@ class Segmentation
                 $fieldSelectData = $this->getSegmentByType($shopSegmentIndex, $sourceSelect);
 
                 foreach ($fieldSelectData as $fieldKey => $case) {
-                    $logicalOperator = ' ' . $ruleA[$fieldKey] . ' ';
-                    if ($ruleAction[$fieldKey] == 'IN') {
+                    $logicalOperator = ' ' . $this->getAllowedLogicalOperator($ruleA[$fieldKey]) . ' ';
+                    if ($this->isRuleInclude($ruleAction[$fieldKey])) {
                         $operator = ' = ';
                     } else {
                         $operator = ' != ';
