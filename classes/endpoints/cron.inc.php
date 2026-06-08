@@ -25,8 +25,11 @@
  * International Registered Trademark & Property of PrestaShop SA
  */
 
+require_once _PS_MODULE_DIR_ . 'mailjet/mailjet.php';
 require_once _PS_MODULE_DIR_ . 'mailjet/classes/MailjetEndpointAuth.php';
 MailjetEndpointAuth::validateCronSecret();
+
+$mailjet = new Mailjet();
 
 function utf8Outtags($text)
 {
