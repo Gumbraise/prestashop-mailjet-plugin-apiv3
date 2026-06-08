@@ -62,8 +62,6 @@ class Segmentation
      */
     public function initContent()
     {
-        Configuration::updateValue('SEGMENT_CUSTOMER_TOKEN', Tools::getValue('token'));
-
         if (version_compare(_PS_VERSION_, '1.5', '>=')) {
             Context::getContext()->controller->addJqueryUI('ui.datepicker');
         }
@@ -260,7 +258,7 @@ class Segmentation
      */
     public function getQuery($post, $live, $limit = false, $having_id_customer = false)
     {
-        $this->initContent();
+        $this->initLang();
         if (empty($post)) {
             $post = $_GET;
         }

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * 2007-2019 PrestaShop
+ * 2007-2017 PrestaShop
  *
  * NOTICE OF LICENSE
  *
@@ -20,41 +20,32 @@
  * needs please refer to http://www.prestashop.com for more information.
  *
  * @author    PrestaShop SA <contact@prestashop.com>
- * @copyright 2007-2019 PrestaShop SA
+ * @copyright 2007-2017 PrestaShop SA
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  * International Registered Trademark & Property of PrestaShop SA
  */
 
-require_once _PS_MODULE_DIR_ . 'mailjet/classes/MailjetEndpointAuth.php';
-MailjetEndpointAuth::validateAdminModuleToken();
+class MailjetEndpointAuth
+{
+    /**
+     * @return void
+     */
+    public static function validateAdminModuleToken()
+    {
+        $idEmployee = (int) Tools::getValue('id_employee');
+        if (!$idEmployee && isset(Context::getContext()->employee->id)) {
+            $idEmployee = (int) Context::getContext()->employee->id;
+        }
 
-header('Content-Type: application/octet-stream');
-header('Content-Disposition: attachment; filename="customersegmentation' . time() . '.csv');
+        $tokenOk = Tools::getAdminToken(
+            'AdminModules' . (int) Tab::getIdFromClassName('AdminModules') . $idEmployee
+        );
+        $submittedToken = (string) Tools::getValue('token');
 
-require_once _PS_MODULE_DIR_ . 'mailjet/mailjet.php';
-
-$obj = new Segmentation();
-
-$sql = Db::getInstance()->executeS($obj->getQuery($_POST, true, false));
-
-if (empty($sql)) {
-    die(utf8_decode($obj->trad[22]));
-}
-
-$header = array_keys($sql[0]);
-$csv = '';
-
-foreach ($header as $h) {
-    $csv .= '"' . preg_replace('/(\r|\n)/', '', utf8_decode($h)) . '";';
-}
-
-$csv .= "\n";
-
-foreach ($sql as $s) {
-    foreach ($s as $field) {
-        $csv .= '"' . utf8_decode($field) . '";';
+        if ($submittedToken === ''
+            || ($submittedToken !== $tokenOk && $submittedToken !== Tools::getAdminTokenLite('AdminModules'))
+        ) {
+            die('hack attempt');
+        }
     }
-    $csv .= "\n";
 }
-
-echo $csv;

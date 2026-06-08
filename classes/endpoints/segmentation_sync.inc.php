@@ -25,13 +25,10 @@
  * International Registered Trademark & Property of PrestaShop SA
  */
 
-$response = false;
-/* $token_ok = Tools::getAdminTokenLite('AdminModules'); */
-$token_ok = Tools::getAdminToken('AdminModules');
+require_once _PS_MODULE_DIR_ . 'mailjet/classes/MailjetEndpointAuth.php';
+MailjetEndpointAuth::validateAdminModuleToken();
 
-if (!Tools::getValue('token') && Tools::getValue('token') != $token_ok) {
-    die('hack attempt');
-}
+$response = false;
 
 if (Tools::getValue('idfilter') == 0 && Tools::getValue('action') === 'getQuery') {
     die('You have to save the list first.');
