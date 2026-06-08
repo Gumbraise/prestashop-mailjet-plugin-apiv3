@@ -57,6 +57,63 @@ class Segmentation
     }
 
     /**
+     * @param mixed $operator
+     * @return string
+     */
+    private function getAllowedLogicalOperator($operator)
+    {
+        $allowed = ['AND' => 'AND', 'OR' => 'OR'];
+        $key = strtoupper(trim((string) $operator));
+
+        return isset($allowed[$key]) ? $allowed[$key] : 'AND';
+    }
+
+    /**
+     * @param mixed $ruleAction
+     * @return bool
+     */
+    private function isRuleInclude($ruleAction)
+    {
+        return strtoupper(trim((string) $ruleAction)) === 'IN';
+    }
+
+    /**
+     * @param mixed $ruleAction
+     * @return string
+     */
+    private function getSqlComparisonOperator($ruleAction)
+    {
+        return $this->isRuleInclude($ruleAction) ? ' = ' : ' != ';
+    }
+
+    /**
+     * @param mixed $ruleAction
+     * @return string
+     */
+    private function getSqlActionOperator($ruleAction)
+    {
+        return $this->isRuleInclude($ruleAction) ? '=' : '!=';
+    }
+
+    /**
+     * @param mixed $value
+     * @return int
+     */
+    private function sanitizeSegmentInt($value)
+    {
+        return (int) $value;
+    }
+
+    /**
+     * @param mixed $value
+     * @return string
+     */
+    private function sanitizeSegmentString($value)
+    {
+        return pSQL((string) $value);
+    }
+
+    /**
      * @return string
      * @throws PrestaShopDatabaseException
      */
@@ -293,10 +350,10 @@ class Segmentation
 
                 $i = 0;
                 foreach ($fieldSelectData as $fieldKey => $case) {
-                    $logicalOperator = ' ' . $ruleA[$fieldKey] . ' ';
-                    $operator = $ruleAction[$fieldKey] == 'IN' ? ' = ' : ' != ';
-                    $action = $ruleAction[$fieldKey] == 'IN';
-                    if ($ruleAction[$fieldKey] == 'IN') {
+                    $logicalOperator = ' ' . $this->getAllowedLogicalOperator($ruleA[$fieldKey]) . ' ';
+                    $operator = $this->getSqlComparisonOperator($ruleAction[$fieldKey]);
+                    $action = $this->isRuleInclude($ruleAction[$fieldKey]);
+                    if ($this->isRuleInclude($ruleAction[$fieldKey])) {
                         $minAction = ' >= ';
                         $maxAction = ' <= ';
                         $exclude = false;
@@ -310,7 +367,9 @@ class Segmentation
                     case '11':
                         $i++;
                         // In db customer without gender is set to 0 insteat of 9
-                        $gender = $sourceData[$fieldKey] == 9 ? 0 : $sourceData[$fieldKey];
+                        $gender = $this->sanitizeSegmentInt($sourceData[$fieldKey]) == 9
+                            ? 0
+                            : $this->sanitizeSegmentInt($sourceData[$fieldKey]);
                         $where .= $logicalOperator . ' c.id_gender ' . $operator . ' ' . $gender;
                         break;
                         // Subscription date
@@ -346,7 +405,7 @@ class Segmentation
                         // Country
                     case '13':
                         $i++;
-                        $where .= $logicalOperator . ' ad.id_country ' . $operator . ' ' . $sourceData[$fieldKey];
+                        $where .= $logicalOperator . ' ad.id_country ' . $operator . ' ' . $this->sanitizeSegmentInt($sourceData[$fieldKey]);
                         break;
                         // Last visit
                     case '17':
@@ -382,7 +441,7 @@ class Segmentation
                         // Newsletter subscription and date
                     case '19':
                         $i++;
-                        $where .= $logicalOperator . ' c.newsletter ' . $operator . ' ' . $sourceData[$fieldKey];
+                        $where .= $logicalOperator . ' c.newsletter ' . $operator . ' ' . $this->sanitizeSegmentInt($sourceData[$fieldKey]);
                         if (Tools::strlen($value1[$fieldKey]) > 0) {
                             if (!validateDate($value1[$fieldKey])) {
                                 $this->displayRuleError($i, $this->trad[82]);
@@ -404,7 +463,7 @@ class Segmentation
                         // Newsletter opt-in
                     case '20':
                         $i++;
-                        $where .= $logicalOperator . ' c.optin ' . $operator . ' ' . $sourceData[$fieldKey];
+                        $where .= $logicalOperator . ' c.optin ' . $operator . ' ' . $this->sanitizeSegmentInt($sourceData[$fieldKey]);
                         break;
                         // Origin
                     case '21':
@@ -447,7 +506,7 @@ class Segmentation
                             $join .= 'LEFT JOIN ' . _DB_PREFIX_ . 'order_return AS oret ON oret.id_customer = c.id_customer';
                             $joined_tables[] = 'order_return';
                         }
-                        $where .= $logicalOperator . ' oret.id_customer ' . $operator . ' ' . $sourceData[$fieldKey];
+                        $where .= $logicalOperator . ' oret.id_customer ' . $operator . ' ' . $this->sanitizeSegmentInt($sourceData[$fieldKey]);
                         break;
                         // Address contains
                     case '25':
@@ -456,11 +515,11 @@ class Segmentation
                             if ($action) {
                                 // Include
                                 $where .= $logicalOperator . ' ad.address1 LIKE "%' . pSQL($sourceData[$fieldKey]) . '%" '
-                                . ' OR ad.address2 LIKE "%' . $sourceData[$fieldKey] . '%" ';
+                                . ' OR ad.address2 LIKE "%' . $this->sanitizeSegmentString($sourceData[$fieldKey]) . '%" ';
                             } else {
                                 // Exclude
                                 $where .= $logicalOperator . ' ((ad.address1 IS NULL OR ad.address1 NOT LIKE "%' . pSQL($sourceData[$fieldKey]) . '%" ) AND '
-                                . ' (ad.address2 IS NULL OR ad.address2 NOT LIKE "%' . $sourceData[$fieldKey] . '%" ))';
+                                . ' (ad.address2 IS NULL OR ad.address2 NOT LIKE "%' . $this->sanitizeSegmentString($sourceData[$fieldKey]) . '%" ))';
                             }
                         }
                         break;
@@ -525,10 +584,10 @@ class Segmentation
                 }
                 $fieldSelectData = $this->getSegmentByType($ordersSegmentIndex, $sourceSelect);
                 foreach ($fieldSelectData as $fieldKey => $orderCase) {
-                    $logicalOperator = ' ' . $ruleA[$fieldKey] . ' ';
+                    $logicalOperator = ' ' . $this->getAllowedLogicalOperator($ruleA[$fieldKey]) . ' ';
                     // include - true , exclude - false
-                    $exclude = $ruleAction[$fieldKey] != 'IN';
-                    $action_oprator = $ruleAction[$fieldKey] == 'IN' ? '=' : '!=';
+                    $exclude = !$this->isRuleInclude($ruleAction[$fieldKey]);
+                    $action_oprator = $this->getSqlActionOperator($ruleAction[$fieldKey]);
                     $minValue1 = (int) $value1[$fieldKey];
                     $maxValue2 = (int) $value2[$fieldKey];
                     switch ($orderCase) {
@@ -572,14 +631,14 @@ class Segmentation
                         }
                         if ($sourceData[$fieldKey] > 0) {
                             $exclude = $exclude ? ' OR id_order_state is null' : '';
-                            $where .= $logicalOperator . ' id_order_state ' . $action_oprator . $sourceData[$fieldKey] . $exclude;
+                            $where .= $logicalOperator . ' id_order_state ' . $action_oprator . $this->sanitizeSegmentInt($sourceData[$fieldKey]) . $exclude;
                         }
                         break;
                         // Payment method
                     case '4':
                         $i++;
                         $exclude = $exclude ? ' OR o.payment is null' : '';
-                        $where .= $logicalOperator . ' o.payment ' . $action_oprator . '"' . $sourceData[$fieldKey] . '" ' . $exclude;
+                        $where .= $logicalOperator . ' o.payment ' . $action_oprator . '"' . $this->sanitizeSegmentString($sourceData[$fieldKey]) . '" ' . $exclude;
                         break;
                         // Product name
                     case '5':
@@ -589,7 +648,7 @@ class Segmentation
                             $joined_tables[] = 'order_detail';
                         }
                         $exclude = $exclude ? ' OR od.product_id IS NULL ' : '';
-                        $where .= $logicalOperator . ' od.product_id ' . $action_oprator . $sourceData[$fieldKey] . $exclude;
+                        $where .= $logicalOperator . ' od.product_id ' . $action_oprator . $this->sanitizeSegmentInt($sourceData[$fieldKey]) . $exclude;
                         break;
                         // Category name
                     case '6':
@@ -599,7 +658,7 @@ class Segmentation
                         $join .= ' LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order = o.id_order ';
                         $join .= ' LEFT JOIN ' . _DB_PREFIX_ . 'category_product cp ON cp.id_product = od.product_id ';
                         $exclude = $exclude ? ' OR cp.id_category IS NULL ' : '';
-                        $where .= $logicalOperator . ' cp.id_category ' . $action_oprator . $sourceData[$fieldKey] . $exclude;
+                        $where .= $logicalOperator . ' cp.id_category ' . $action_oprator . $this->sanitizeSegmentInt($sourceData[$fieldKey]) . $exclude;
                         break;
                         // Brand name
                     case '7':
@@ -618,7 +677,7 @@ class Segmentation
                         }
 
                         $exclude = $exclude ? ' OR m.id_manufacturer IS NULL ' : '';
-                        $where .= $logicalOperator . ' m.id_manufacturer ' . $action_oprator . $sourceData[$fieldKey] . $exclude;
+                        $where .= $logicalOperator . ' m.id_manufacturer ' . $action_oprator . $this->sanitizeSegmentInt($sourceData[$fieldKey]) . $exclude;
                         break;
                         // Sales
                     case '8':
