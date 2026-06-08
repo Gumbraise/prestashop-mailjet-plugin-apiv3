@@ -127,9 +127,13 @@ class Mailjet extends Module
         $this->displayName = 'Mailjet';
         $this->description = $this->l('Create contact lists and client segment groups, drag-n-drop newsletters, define client re-engagement triggers, follow and analyze all email user interaction, minimize negative user engagement events(blocked, unsubs and spam) and optimise deliverability and revenue generation. Get started today with 6000 free emails per month.');
         $this->author = 'PrestaShop';
-        $this->version = '3.6.1';
+        $this->version = '3.7.0';
         $this->module_key = 'c81a68225f14a65239de29ee6b78d87b';
         $this->tab = 'advertising_marketing';
+        $this->ps_versions_compliancy = [
+            'min' => '1.5.0.0',
+            'max' => '9.99.99',
+        ];
 
         // Parent constructor
         parent::__construct();
@@ -178,6 +182,86 @@ class Mailjet extends Module
     /*
      * * Install / Uninstall Methods
      */
+
+    /**
+     * @return array<string, string>
+     */
+    private function getDeprecatedHooksMap()
+    {
+        return [
+            'cart' => 'actionCartSave',
+            'newOrder' => 'actionValidateOrder',
+            'updateQuantity' => 'actionUpdateQuantity',
+            'header' => 'displayHeader',
+            'authentication' => 'actionAuthentication',
+            'createAccount' => 'actionCustomerAccountAdd',
+            'invoice' => 'displayAdminOrderTop',
+            'updateOrderStatus' => 'actionOrderStatusUpdate',
+            'cancelProduct' => 'actionProductCancel',
+            'orderSlip' => 'actionOrderSlipAdd',
+            'orderReturn' => 'actionOrderReturn',
+            'orderConfirmation' => 'displayOrderConfirmation',
+            'adminCustomers' => 'displayAdminCustomers',
+        ];
+    }
+
+    /**
+     * @return bool
+     */
+    public function migrateDeprecatedHooks()
+    {
+        if (version_compare(_PS_VERSION_, '8', '<')) {
+            return true;
+        }
+
+        $result = true;
+        foreach ($this->getDeprecatedHooksMap() as $deprecatedHook => $modernHook) {
+            $this->unregisterHook($deprecatedHook);
+            if (!$this->isRegisteredInHook($modernHook) && !$this->registerHook($modernHook)) {
+                $result = false;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return bool
+     */
+    private function registerModuleHooks()
+    {
+        $hooks = [
+            'actionAdminCustomersControllerSaveBefore',
+            'actionAdminCustomersControllerSaveAfter',
+            'actionAdminCustomersControllerStatusAfter',
+            'actionAdminCustomersControllerDeleteBefore',
+            'actionExportGDPRData',
+            'actionObjectCustomerDeleteBefore',
+            'actionObjectCustomerUpdateAfter',
+            'displayBackOfficeHeader',
+            'registerGDPRConsent',
+            'actionNewsletterRegistrationAfter',
+            'actionNewsletterRegistrationBefore',
+            'actionControllerInitBefore',
+        ];
+
+        if (version_compare(_PS_VERSION_, '8', '>=')) {
+            $hooks = array_merge($hooks, array_values($this->getDeprecatedHooksMap()));
+        } else {
+            $hooks = array_merge($hooks, array_keys($this->getDeprecatedHooksMap()));
+            if (version_compare(_PS_VERSION_, '1.7.7', '>=')) {
+                $hooks[] = 'actionCartSave';
+            }
+        }
+
+        foreach ($hooks as $hook) {
+            if (!$this->registerHook($hook)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     /**
      * @return bool
@@ -246,40 +330,10 @@ class Mailjet extends Module
         $this->createTriggers();
         Configuration::updateValue('MJ_ALLEMAILS', 1);
 
-        $updateOrderHook = 'updateOrderStatus';
-        if (version_compare(_PS_VERSION_, '8', '>=')) {
-            $updateOrderHook = 'actionOrderStatusUpdate';
-        }
-
         return (
             parent::install()
             && $this->loadConfiguration()
-            && $this->registerHook('actionAdminCustomersControllerSaveBefore')
-            && $this->registerHook('actionAdminCustomersControllerSaveAfter')
-            && $this->registerHook('actionAdminCustomersControllerStatusAfter')
-            && $this->registerHook('actionAdminCustomersControllerDeleteBefore')
-            && $this->registerHook('actionExportGDPRData')
-            && $this->registerHook('actionObjectCustomerDeleteBefore')
-            && $this->registerHook('actionObjectCustomerUpdateAfter')
-            && $this->registerHook('adminCustomers')
-            && $this->registerHook('authentication')
-            && $this->registerHook('displaybackOfficeHeader')
-            && $this->registerHook('cancelProduct')
-            && $this->registerHook('cart')
-            && $this->registerHook('actionCartSave')
-            && $this->registerHook('createAccount')
-            && $this->registerHook('header')
-            && $this->registerHook('invoice')
-            && $this->registerHook('newOrder')
-            && $this->registerHook('orderConfirmation')
-            && $this->registerHook('orderReturn')
-            && $this->registerHook('orderSlip')
-            && $this->registerHook('registerGDPRConsent')
-            && $this->registerHook($updateOrderHook)
-            && $this->registerHook('updateQuantity')
-            && $this->registerHook('actionNewsletterRegistrationAfter')
-            && $this->registerHook('actionNewsletterRegistrationBefore')
-            && $this->registerHook('actionControllerInitBefore')
+            && $this->registerModuleHooks()
         );
     }
 
@@ -416,6 +470,16 @@ class Mailjet extends Module
         }
     }
 
+    /**
+     * @return void
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    public function hookDisplayHeader()
+    {
+        $this->hookHeader();
+    }
+
 
     /**
      * @param  $params
@@ -446,6 +510,15 @@ class Mailjet extends Module
                 Db::GetInstance()->Execute($sql);
             }
         }
+    }
+
+    /**
+     * @param array $params
+     * @return string|void
+     */
+    public function hookActionValidateOrder($params)
+    {
+        return $this->hookNewOrder($params);
     }
 
     /**
@@ -571,6 +644,7 @@ class Mailjet extends Module
                 'currentSender' => $currentSender
             ]
         );
+        $this->assignEndpointUrlsToSmarty();
 
         if ($this->isAccountSet()) {
             $this->context->smarty->assign(
@@ -749,6 +823,15 @@ class Mailjet extends Module
         //TODO implement in the future
     }
 
+    /**
+     * @param $params
+     * @return void
+     */
+    public function hookDisplayAdminCustomers($params)
+    {
+        $this->hookAdminCustomers($params);
+    }
+
     public function hookActionObjectCustomerDeleteBefore($params)
     {
         $customer = $params['object'];
@@ -811,6 +894,15 @@ class Mailjet extends Module
     }
 
     /**
+     * @param array $params
+     * @return bool
+     */
+    public function hookActionCustomerAccountAdd($params)
+    {
+        return $this->hookCreateAccount($params);
+    }
+
+    /**
      * @param  array $params
      * @return void
      */
@@ -870,6 +962,15 @@ class Mailjet extends Module
     }
 
     /**
+     * @param array $params
+     * @return string
+     */
+    public function hookActionUpdateQuantity($params)
+    {
+        return $this->hookUpdateQuantity($params);
+    }
+
+    /**
      * Hook triggered when cart is saved (PrestaShop 1.7.7+)
      * Replaces deprecated 'cart' hook
      *
@@ -898,12 +999,43 @@ class Mailjet extends Module
 
     public function hookAuthentication($params)
     {
-        return $this->hookNewOrder($params);
+        if (!empty($params['customer']->id)) {
+            $this->checkAutoAssignment((int) $params['customer']->id);
+        }
+
+        return '';
+    }
+
+    /**
+     * @param array $params
+     * @return string
+     */
+    public function hookActionAuthentication($params)
+    {
+        return $this->hookAuthentication($params);
     }
 
     public function hookInvoice($params)
     {
         return $this->hookUpdateOrderStatus($params);
+    }
+
+    /**
+     * @param array $params
+     * @return string
+     */
+    public function hookDisplayAdminOrderTop($params)
+    {
+        return $this->hookInvoice($params);
+    }
+
+    /**
+     * @param array $params
+     * @return string
+     */
+    public function hookDisplayInvoice($params)
+    {
+        return $this->hookInvoice($params);
     }
 
     public function hookUpdateOrderStatus($params)
@@ -956,6 +1088,15 @@ class Mailjet extends Module
         return $this->hookUpdateOrderStatus($params);
     }
 
+    /**
+     * @param array $params
+     * @return string
+     */
+    public function hookActionOrderSlipAdd($params)
+    {
+        return $this->hookOrderSlip($params);
+    }
+
     public function hookRegisterGDPRConsent($params)
     {
         //TODO Implement this later
@@ -966,9 +1107,36 @@ class Mailjet extends Module
         return $this->hookUpdateOrderStatus($params);
     }
 
+    /**
+     * @param array $params
+     * @return string
+     */
+    public function hookActionOrderReturn($params)
+    {
+        return $this->hookOrderReturn($params);
+    }
+
     public function hookCancelProduct($params)
     {
         return $this->hookUpdateOrderStatus($params);
+    }
+
+    /**
+     * @param array $params
+     * @return string
+     */
+    public function hookActionProductCancel($params)
+    {
+        return $this->hookCancelProduct($params);
+    }
+
+    /**
+     * @param array $params
+     * @return void
+     */
+    public function hookDisplayOrderConfirmation($params)
+    {
+        $this->hookOrderConfirmation($params);
     }
 
     public function newCheckAutoAssignment($id_customer)
@@ -1570,8 +1738,7 @@ class Mailjet extends Module
             unset($titles['original_address']);
             unset($titles['new_address']);
 
-            $part = $this->context->shop->domain . $this->context->shop->physical_uri;
-            $url = 'http://' . $part . 'modules/mailjet/events.php?h=' . $this->getEventsHash();
+            $url = $this->getEndpointUrls()['events'];
 
             $this->context->smarty->assign(
                 [
@@ -1766,6 +1933,9 @@ class Mailjet extends Module
             'root_file' => $root_file,
             'available_domain' => $available_domain,
             'domainsCurrent' => $domainsCurrent,
+            'MJ_ajax_url' => $this->getEndpointUrls()['ajax'],
+            'MJ_id_employee' => (int) $this->context->employee->id,
+            'MJ_ADMINMODULES_TOKEN' => Tools::getAdminTokenLite('AdminModules'),
             ]
         );
     }
@@ -1835,10 +2005,7 @@ class Mailjet extends Module
         $sign = $this->context->currency->getSign();
         $languages = Language::getLanguages();
         $sel_lang = $this->context->language->id;
-        $cron = Tools::getShopDomainSsl(true) . _MODULE_DIR_ . $this->name . '/mailjet.cron.php?token=' .
-            (Configuration::get('SEGMENT_CUSTOMER_TOKEN')
-                ? Configuration::get('SEGMENT_CUSTOMER_TOKEN')
-                : Tools::getValue('token'));
+        $cron = $this->getEndpointUrls()['cron'];
         $iso = $this->context->language->iso_code;
 
         $api = MailjetTemplate::getApi();
@@ -2364,6 +2531,69 @@ class Mailjet extends Module
     public function getEventsHash()
     {
         return md5($this->account->TOKEN);
+    }
+
+    /**
+     * @param string $controller
+     * @param array $params
+     * @param bool|null $ssl
+     * @return string
+     */
+    public function getFrontControllerUrl($controller, array $params = [], $ssl = null)
+    {
+        if ($ssl === null) {
+            $ssl = (bool) Configuration::get('PS_SSL_ENABLED');
+        }
+
+        return $this->context->link->getModuleLink(
+            $this->name,
+            $controller,
+            $params,
+            $ssl
+        );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getEndpointUrls()
+    {
+        $cronToken = Configuration::get('SEGMENT_CUSTOMER_TOKEN') ?: $this->account->TOKEN;
+        $adminToken = Tools::getAdminTokenLite('AdminModules');
+
+        return [
+            'ajax' => $this->getFrontControllerUrl('ajax'),
+            'segmentation' => $this->getFrontControllerUrl('segmentation'),
+            'segmentationsync' => $this->getFrontControllerUrl('segmentationsync'),
+            'segmentationexport' => $this->getFrontControllerUrl('segmentationexport'),
+            'bundlejs' => $this->getFrontControllerUrl('bundlejs'),
+            'events' => $this->getFrontControllerUrl('events', ['h' => $this->getEventsHash()]),
+            'cron' => $this->getFrontControllerUrl('cron', ['token' => $cronToken]),
+            'callbackcampaign' => $this->getFrontControllerUrl('callbackcampaign'),
+            'callback' => $this->getFrontControllerUrl('callback'),
+            'signup' => $this->getFrontControllerUrl('signup', ['internaltoken' => $adminToken]),
+        ];
+    }
+
+    /**
+     * @return void
+     */
+    private function assignEndpointUrlsToSmarty()
+    {
+        $urls = $this->getEndpointUrls();
+        $this->context->smarty->assign(
+            [
+                'MJ_ajax_url' => $urls['ajax'],
+                'MJ_segmentation_url' => $urls['segmentation'],
+                'MJ_segmentation_sync_url' => $urls['segmentationsync'],
+                'MJ_segmentation_export_url' => $urls['segmentationexport'],
+                'MJ_bundlejs_url' => $urls['bundlejs'],
+                'MJ_events_url' => $urls['events'],
+                'MJ_cron_url' => $urls['cron'],
+                'MJ_callbackcampaign_url' => $urls['callbackcampaign'],
+                'MJ_signup_url' => $urls['signup'],
+            ]
+        );
     }
 
     /**
