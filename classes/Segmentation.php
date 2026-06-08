@@ -71,6 +71,12 @@ class Segmentation
         $this->clearCacheLang();
         $this->initLang();
 
+        $endpointUrls = [];
+        $mailjetModule = Module::getInstanceByName('mailjet');
+        if ($mailjetModule instanceof Mailjet) {
+            $endpointUrls = $mailjetModule->getEndpointUrls();
+        }
+
         Context::getContext()->smarty->assign(
             array(
             'mj__PS_BASE_URI__' => __PS_BASE_URI__,
@@ -97,9 +103,10 @@ class Segmentation
             'mj_datepickerPersonnalized' => version_compare(_PS_VERSION_, '1.5', '<') ? '<script type="text/javascript" src="' .
             _PS_JS_DIR_ . 'jquery/datepicker/jquery-ui-personalized-1.6rc4.packed.js"></script>' : '',
             'mj_token' => Tools::getValue('token'),
-            'mj_ajaxFile' => _MODULE_DIR_ . 'mailjet/ajax/ajax.php',
-            'mj_ajaxSyncFile' => _MODULE_DIR_ . 'mailjet/ajax/sync.php',
-            'mj_ajaxBundle' => _MODULE_DIR_ . 'mailjet/ajax/bundlejs_prestashop.php',
+            'mj_ajaxFile' => !empty($endpointUrls['segmentation']) ? $endpointUrls['segmentation'] : _MODULE_DIR_ . 'mailjet/ajax/ajax.php',
+            'mj_ajaxSyncFile' => !empty($endpointUrls['segmentationsync']) ? $endpointUrls['segmentationsync'] : _MODULE_DIR_ . 'mailjet/ajax/sync.php',
+            'mj_ajaxBundle' => !empty($endpointUrls['bundlejs']) ? $endpointUrls['bundlejs'] : _MODULE_DIR_ . 'mailjet/ajax/bundlejs_prestashop.php',
+            'mj_segmentation_export_url' => !empty($endpointUrls['segmentationexport']) ? $endpointUrls['segmentationexport'] : _MODULE_DIR_ . 'mailjet/views/templates/admin/export.php',
             'mj_id_employee' => (int) Context::getContext()->cookie->id_employee,
             'mj_lblMan' => stripReturn($this->ll(20)),
             'mj_lblWoman' => stripReturn($this->ll(21)),
