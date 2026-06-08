@@ -72,4 +72,56 @@ class MailjetEndpointAuth
             die('No hackers allowed here ! ;-)');
         }
     }
+
+    /**
+     * @return void
+     */
+    public static function ensureWebhookSecret()
+    {
+        if (!Configuration::get('MAILJET_WEBHOOK_SECRET')) {
+            Configuration::updateValue('MAILJET_WEBHOOK_SECRET', bin2hex(random_bytes(32)));
+        }
+    }
+
+    /**
+     * @return string
+     */
+    public static function getWebhookSecret()
+    {
+        self::ensureWebhookSecret();
+
+        return (string) Configuration::get('MAILJET_WEBHOOK_SECRET');
+    }
+
+    /**
+     * @return string
+     */
+    public static function readWebhookRequestBody()
+    {
+        return trim(Tools::file_get_contents('php://input'));
+    }
+
+    /**
+     * @param string $body
+     * @return void
+     */
+    public static function validateWebhookRequest($body)
+    {
+        self::ensureWebhookSecret();
+        $secret = (string) Configuration::get('MAILJET_WEBHOOK_SECRET');
+        $urlToken = (string) Tools::getValue('h');
+        $providedSignature = isset($_SERVER['HTTP_X_MAILJET_SIGNATURE'])
+            ? (string) $_SERVER['HTTP_X_MAILJET_SIGNATURE']
+            : '';
+
+        if ($urlToken === '' || !hash_equals($secret, $urlToken)) {
+            header('HTTP/1.1 401 Unauthorized');
+            exit;
+        }
+
+        if ($providedSignature !== '' && !hash_equals(hash_hmac('sha256', $body, $secret), $providedSignature)) {
+            header('HTTP/1.1 401 Unauthorized');
+            exit;
+        }
+    }
 }

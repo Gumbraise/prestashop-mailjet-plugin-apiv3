@@ -332,6 +332,7 @@ class Mailjet extends Module
 
         require_once _PS_MODULE_DIR_ . 'mailjet/classes/MailjetEndpointAuth.php';
         MailjetEndpointAuth::ensureCronSecret();
+        MailjetEndpointAuth::ensureWebhookSecret();
 
         return (
             parent::install()
@@ -2533,7 +2534,9 @@ class Mailjet extends Module
      */
     public function getEventsHash()
     {
-        return md5($this->account->TOKEN);
+        require_once _PS_MODULE_DIR_ . 'mailjet/classes/MailjetEndpointAuth.php';
+
+        return MailjetEndpointAuth::getWebhookSecret();
     }
 
     /**

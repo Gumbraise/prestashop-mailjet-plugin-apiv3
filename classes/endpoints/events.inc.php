@@ -26,16 +26,14 @@
  */
 
 require_once _PS_MODULE_DIR_ . 'mailjet/mailjet.php';
+require_once _PS_MODULE_DIR_ . 'mailjet/classes/MailjetEndpointAuth.php';
+
+$post = MailjetEndpointAuth::readWebhookRequestBody();
+MailjetEndpointAuth::validateWebhookRequest($post);
 
 $mj = new Mailjet();
 
-if ($mj->getEventsHash() !== Tools::getValue('h')) {
-    header('HTTP/1.1 401 Unauthorized');
-    return;
-}
-
 // Catch Event
-$post = trim(Tools::file_get_contents('php://input'));
 
 // No Event sent
 if (empty($post)) {
