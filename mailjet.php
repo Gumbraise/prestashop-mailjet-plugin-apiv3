@@ -1447,7 +1447,7 @@ class Mailjet extends Module
                 }
                 $languages = Language::getLanguages();
                 $shop_name = $this->context->shop->name;
-                $shop_url = 'http://' . $this->context->shop->domain;
+                $shop_url = Tools::getShopDomainSsl(true, true);
                 $shop_logo =
                     $shop_url . _PS_IMG_ . Configuration::get('PS_LOGO') . '?' . Configuration::get('PS_IMG_UPDATE_TIME');
 
@@ -2124,7 +2124,7 @@ class Mailjet extends Module
         $languages = Language::getLanguages();
 
         $shop_name = $this->context->shop->name;
-        $shop_url = 'http://' . $this->context->shop->domain;
+        $shop_url = Tools::getShopDomainSsl(true, true);
 
         for ($i = 1; $i <= 9; $i++) {
             if ($i != 5 && $i != 6) {

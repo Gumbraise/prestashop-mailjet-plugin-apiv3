@@ -79,7 +79,7 @@ if ($mailjet->triggers['active']) {
 
     /* infos from the shop */
     $shop_name = $context->shop->name;
-    $shop_url = 'http://' . $context->shop->domain;
+    $shop_url = Tools::getShopDomainSsl(true, true);
     $shop_logo = $shop_url . _PS_IMG_ . Configuration::get('PS_LOGO') . '?' . Configuration::get('PS_IMG_UPDATE_TIME');
 
     /* IDs research for SQL requests */
