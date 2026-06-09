@@ -52,8 +52,8 @@
         }
     }
 
-    window.top.location.href = 'http://<?php echo $_SERVER['HTTP_HOST'] ?>' +
-        uri +
+    var baseUrl = <?php echo json_encode(Tools::getShopDomainSsl(true, true)); ?>;
+    window.top.location.href = baseUrl + uri +
         '/index.php?tab=AdminModules&configure=mailjet&module_name=mailjet&MJ_request_page=CAMPAIGN2&token=' +
-        token;
+        encodeURIComponent(token);
 </script>
