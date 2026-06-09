@@ -33,6 +33,16 @@ header('Content-Disposition: attachment; filename="customersegmentation' . time(
 
 require_once _PS_MODULE_DIR_ . 'mailjet/mailjet.php';
 
+function safeCsvCell($value)
+{
+    $value = str_replace(["\r", "\n"], ' ', (string) $value);
+    if (preg_match('/^[=+\-@]/', $value)) {
+        return "'" . $value;
+    }
+
+    return $value;
+}
+
 $obj = new Segmentation();
 
 $sql = Db::getInstance()->executeS($obj->getQuery($_POST, true, false));
@@ -45,14 +55,14 @@ $header = array_keys($sql[0]);
 $csv = '';
 
 foreach ($header as $h) {
-    $csv .= '"' . preg_replace('/(\r|\n)/', '', utf8_decode($h)) . '";';
+    $csv .= '"' . preg_replace('/(\r|\n)/', '', utf8_decode(safeCsvCell($h))) . '";';
 }
 
 $csv .= "\n";
 
 foreach ($sql as $s) {
     foreach ($s as $field) {
-        $csv .= '"' . utf8_decode($field) . '";';
+        $csv .= '"' . utf8_decode(safeCsvCell($field)) . '";';
     }
     $csv .= "\n";
 }
