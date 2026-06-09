@@ -64,12 +64,19 @@ $result = [];
 
 MailJetLog::write(MailJetLog::$file, 'New request sent');
 
+$allowedActions = [
+    'checkMerchantSetupState' => 'checkMerchantSetupState',
+    'checkMjAuth' => 'checkMjAuth',
+];
+
 if ($mj->getToken() != Tools::getValue('token')) {
     $result['error'] = $mj->l('Bad token sent');
-} elseif (!method_exists($mj, $method)) {
+} elseif (!isset($allowedActions[$method])) {
+    $result['error'] = $mj->l('Method requested doesn\'t exist:') . ' ' . $method;
+} elseif (!method_exists($mj, $allowedActions[$method])) {
     $result['error'] = $mj->l('Method requested doesn\'t exist:') . ' ' . $method;
 } else {
-    $result = $mj->{$method}();
+    $result = $mj->{$allowedActions[$method]}();
 }
 
 $message = isset($result['error']) ? $result['error'] : 'Success with method: ' . $method;
