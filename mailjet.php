@@ -1506,12 +1506,18 @@ class Mailjet extends Module
             if (isset($_FILES['MJ_triggers_import_file']['tmp_name'])
                 && !empty($_FILES['MJ_triggers_import_file']['tmp_name'])
             ) {
-                $file = new SplFileObject($_FILES['MJ_triggers_import_file']['tmp_name']);
-                while (!$file->eof()) {
-                    $triggers .= $file->fgets();
+                if ((int) $_FILES['MJ_triggers_import_file']['size'] > 1048576) {
+                    throw new PrestaShopException($this->l('Trigger file is too large'));
                 }
 
-                Configuration::updateValue('MJ_TRIGGERS', $triggers);
+                $triggersImport = '';
+                $file = new SplFileObject($_FILES['MJ_triggers_import_file']['tmp_name']);
+                while (!$file->eof()) {
+                    $triggersImport .= $file->fgets();
+                }
+
+                $triggersImport = $this->validateTriggerImport($triggersImport);
+                Configuration::updateValue('MJ_TRIGGERS', $triggersImport);
                 $modif = true;
             }
         }
@@ -2055,6 +2061,28 @@ class Mailjet extends Module
         }
 
         return Configuration::updateValue('MJ_TRIGGERS', json_encode($triggers));
+    }
+
+    /**
+     * @param string $triggersJson
+     * @return string
+     */
+    private function validateTriggerImport($triggersJson)
+    {
+        if (Tools::strlen($triggersJson) > 1048576) {
+            throw new PrestaShopException($this->l('Trigger file is too large'));
+        }
+
+        $decoded = json_decode($triggersJson, true);
+        if (!is_array($decoded) || json_last_error() !== JSON_ERROR_NONE) {
+            throw new PrestaShopException($this->l('Invalid trigger JSON'));
+        }
+
+        if (!isset($decoded['active']) || !isset($decoded['trigger']) || !is_array($decoded['trigger'])) {
+            throw new PrestaShopException($this->l('Invalid trigger schema'));
+        }
+
+        return $triggersJson;
     }
 
     /**
