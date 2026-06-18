@@ -196,12 +196,15 @@ class Mailjet extends Module
             'authentication' => 'actionAuthentication',
             'createAccount' => 'actionCustomerAccountAdd',
             'invoice' => 'displayAdminOrderTop',
+            'displayInvoice' => 'displayAdminOrderTop',
             'updateOrderStatus' => 'actionOrderStatusUpdate',
             'cancelProduct' => 'actionProductCancel',
             'orderSlip' => 'actionOrderSlipAdd',
             'orderReturn' => 'actionOrderReturn',
             'orderConfirmation' => 'displayOrderConfirmation',
             'adminCustomers' => 'displayAdminCustomers',
+            'backOfficeHeader' => 'displayBackOfficeHeader',
+            'displaybackOfficeHeader' => 'displayBackOfficeHeader',
         ];
     }
 
@@ -216,7 +219,12 @@ class Mailjet extends Module
 
         $result = true;
         foreach ($this->getDeprecatedHooksMap() as $deprecatedHook => $modernHook) {
+            if (!$this->isRegisteredInHook($deprecatedHook)) {
+                continue;
+            }
+
             $this->unregisterHook($deprecatedHook);
+
             if (!$this->isRegisteredInHook($modernHook) && !$this->registerHook($modernHook)) {
                 $result = false;
             }
@@ -439,7 +447,7 @@ class Mailjet extends Module
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
-    public function hookHeader()
+    public function hookDisplayHeader()
     {
         if (Tools::getIsset('tokp')) {
             if (!$this->context->cart->id) {
@@ -475,13 +483,11 @@ class Mailjet extends Module
     }
 
     /**
-     * @return void
-     * @throws PrestaShopDatabaseException
-     * @throws PrestaShopException
+     * @deprecated Use hookDisplayHeader()
      */
-    public function hookDisplayHeader()
+    public function hookHeader()
     {
-        $this->hookHeader();
+        $this->hookDisplayHeader();
     }
 
 
@@ -489,7 +495,7 @@ class Mailjet extends Module
      * @param  $params
      * @return string|void
      */
-    public function hookNewOrder($params)
+    public function hookActionValidateOrder($params)
     {
         if (empty($params['customer']->id)) {
             return '';
@@ -517,21 +523,28 @@ class Mailjet extends Module
     }
 
     /**
-     * @param array $params
-     * @return string|void
+     * @deprecated Use hookActionValidateOrder()
      */
-    public function hookActionValidateOrder($params)
+    public function hookNewOrder($params)
     {
-        return $this->hookNewOrder($params);
+        return $this->hookActionValidateOrder($params);
     }
 
     /**
      * @param  $params
      * @return void
      */
-    public function hookOrderConfirmation($params)
+    public function hookDisplayOrderConfirmation($params)
     {
         //TODO implement hook in new version
+    }
+
+    /**
+     * @deprecated Use hookDisplayOrderConfirmation()
+     */
+    public function hookOrderConfirmation($params)
+    {
+        $this->hookDisplayOrderConfirmation($params);
     }
 
     /**
@@ -822,18 +835,17 @@ class Mailjet extends Module
      * @param  $params
      * @return void
      */
-    public function hookAdminCustomers($params)
+    public function hookDisplayAdminCustomers($params)
     {
         //TODO implement in the future
     }
 
     /**
-     * @param $params
-     * @return void
+     * @deprecated Use hookDisplayAdminCustomers()
      */
-    public function hookDisplayAdminCustomers($params)
+    public function hookAdminCustomers($params)
     {
-        $this->hookAdminCustomers($params);
+        $this->hookDisplayAdminCustomers($params);
     }
 
     public function hookActionObjectCustomerDeleteBefore($params)
@@ -882,7 +894,7 @@ class Mailjet extends Module
      * @param  array $params
      * @return boolean
      */
-    public function hookCreateAccount($params)
+    public function hookActionCustomerAccountAdd($params)
     {
         $initialSynchronization = new HooksSynchronizationSingleUser(MailjetTemplate::getApi());
 
@@ -898,12 +910,11 @@ class Mailjet extends Module
     }
 
     /**
-     * @param array $params
-     * @return bool
+     * @deprecated Use hookActionCustomerAccountAdd()
      */
-    public function hookActionCustomerAccountAdd($params)
+    public function hookCreateAccount($params)
     {
-        return $this->hookCreateAccount($params);
+        return $this->hookActionCustomerAccountAdd($params);
     }
 
     /**
@@ -960,18 +971,17 @@ class Mailjet extends Module
         }
     }
 
-    public function hookUpdateQuantity($params)
+    public function hookActionUpdateQuantity($params)
     {
-        return $this->hookUpdateOrderStatus($params);
+        return $this->hookActionOrderStatusUpdate($params);
     }
 
     /**
-     * @param array $params
-     * @return string
+     * @deprecated Use hookActionUpdateQuantity()
      */
-    public function hookActionUpdateQuantity($params)
+    public function hookUpdateQuantity($params)
     {
-        return $this->hookUpdateQuantity($params);
+        return $this->hookActionUpdateQuantity($params);
     }
 
     /**
@@ -1001,7 +1011,7 @@ class Mailjet extends Module
         return $this->hookActionCartSave($params);
     }
 
-    public function hookAuthentication($params)
+    public function hookActionAuthentication($params)
     {
         if (!empty($params['customer']->id)) {
             $this->checkAutoAssignment((int) $params['customer']->id);
@@ -1011,57 +1021,41 @@ class Mailjet extends Module
     }
 
     /**
-     * @param array $params
-     * @return string
+     * @deprecated Use hookActionAuthentication()
      */
-    public function hookActionAuthentication($params)
+    public function hookAuthentication($params)
     {
-        return $this->hookAuthentication($params);
+        return $this->hookActionAuthentication($params);
     }
 
-    public function hookInvoice($params)
-    {
-        return $this->hookUpdateOrderStatus($params);
-    }
-
-    /**
-     * @param array $params
-     * @return string
-     */
     public function hookDisplayAdminOrderTop($params)
     {
-        return $this->hookInvoice($params);
+        return $this->hookActionOrderStatusUpdate($params);
     }
 
     /**
-     * @param array $params
-     * @return string
+     * @deprecated Use hookDisplayAdminOrderTop()
      */
     public function hookDisplayInvoice($params)
     {
-        return $this->hookInvoice($params);
+        return $this->hookDisplayAdminOrderTop($params);
     }
 
+    /**
+     * @deprecated Use hookDisplayAdminOrderTop()
+     */
+    public function hookInvoice($params)
+    {
+        return $this->hookDisplayAdminOrderTop($params);
+    }
+
+    /**
+     * @deprecated Use hookActionOrderStatusUpdate()
+     */
     public function hookUpdateOrderStatus($params)
     {
-        if (isset($params['id_order'])) {
-            $sql = 'SELECT id_customer
-                FROM ' . _DB_PREFIX_ . 'orders
-                WHERE id_order = ' . (int)$params['id_order'];
-
-            if (($id_customer = (int)Db::getInstance()->getValue($sql)) > 0) {
-                $this->checkAutoAssignment($id_customer);
-            }
-        } elseif (isset($params['cart'])) {
-            $cart = $params['cart'];
-            if ($cart instanceof Cart && isset($cart->id_customer)) {
-                $this->checkAutoAssignment((int)$cart->id_customer);
-            }
-        }
-
-        return '';
+        return $this->hookActionOrderStatusUpdate($params);
     }
-
 
     /**
      * @param $params
@@ -1087,18 +1081,17 @@ class Mailjet extends Module
         return '';
     }
 
-    public function hookOrderSlip($params)
+    public function hookActionOrderSlipAdd($params)
     {
-        return $this->hookUpdateOrderStatus($params);
+        return $this->hookActionOrderStatusUpdate($params);
     }
 
     /**
-     * @param array $params
-     * @return string
+     * @deprecated Use hookActionOrderSlipAdd()
      */
-    public function hookActionOrderSlipAdd($params)
+    public function hookOrderSlip($params)
     {
-        return $this->hookOrderSlip($params);
+        return $this->hookActionOrderSlipAdd($params);
     }
 
     public function hookRegisterGDPRConsent($params)
@@ -1106,41 +1099,30 @@ class Mailjet extends Module
         //TODO Implement this later
     }
 
-    public function hookOrderReturn($params)
-    {
-        return $this->hookUpdateOrderStatus($params);
-    }
-
-    /**
-     * @param array $params
-     * @return string
-     */
     public function hookActionOrderReturn($params)
     {
-        return $this->hookOrderReturn($params);
-    }
-
-    public function hookCancelProduct($params)
-    {
-        return $this->hookUpdateOrderStatus($params);
+        return $this->hookActionOrderStatusUpdate($params);
     }
 
     /**
-     * @param array $params
-     * @return string
+     * @deprecated Use hookActionOrderReturn()
      */
+    public function hookOrderReturn($params)
+    {
+        return $this->hookActionOrderReturn($params);
+    }
+
     public function hookActionProductCancel($params)
     {
-        return $this->hookCancelProduct($params);
+        return $this->hookActionOrderStatusUpdate($params);
     }
 
     /**
-     * @param array $params
-     * @return void
+     * @deprecated Use hookActionProductCancel()
      */
-    public function hookDisplayOrderConfirmation($params)
+    public function hookCancelProduct($params)
     {
-        $this->hookOrderConfirmation($params);
+        return $this->hookActionProductCancel($params);
     }
 
     public function newCheckAutoAssignment($id_customer)
